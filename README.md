@@ -14,5 +14,5 @@
 export MONGODB_URL="mongodb+srv://<username>:<password>@<url>/<db>?retryWrites=true&w=majority"
 
 # Start the service:
-uvicorn app:app --reload
+uvicorn src.app.main:app --reload
 ```
