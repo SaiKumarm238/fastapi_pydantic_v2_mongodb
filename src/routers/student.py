@@ -1,71 +1,15 @@
-import os
-from typing import Optional, List
-from fastapi import FastAPI, Body, HTTPException, status
+from fastapi import APIRouter, Body, HTTPException, status
 from fastapi.responses import Response
-from pydantic import ConfigDict, BaseModel, Field
-from pydantic.functional_validators import BeforeValidator
-from typing_extensions import Annotated
-from bson import ObjectId
-import pymongo 
 from pymongo import ReturnDocument
-
-app = FastAPI(
-    title="Student Course API",
-    summary="A sample application showing how to use FastAPI to add a ReST API to a MongoDB collection.",
-)
-client = pymongo.MongoClient(os.environ["MONGODB_URL"])
-db = client.college
-student_collection = db.get_collection("students")
-
-# Represents an ObjectId field in the database.
-# It will be represented as a `str` on the model so that it can be serialized to JSON.
-PyObjectId = Annotated[str, BeforeValidator(str)]
+from src.models.student import StudentCollection, StudentModel, UpdateStudentModel
+from src.database.database import student_collection
+from bson import ObjectId
 
 
-class StudentModel(BaseModel):
-    """
-    Container for a single student record.
-    """
+student_router = APIRouter(prefix='/student')
 
-    # The primary key for the StudentModel, stored as a `str` on the instance.
-    # This will be aliased to `_id` when sent to MongoDB,
-    # but provided as `id` in the API requests and responses.
-    id: Optional[PyObjectId] = Field(alias="_id", default=None)
-    name: str = Field(...)
-    email: str = Field(...)
-    course: str = Field(...)
-    gpa: float = Field(..., le=4.0)
-    model_config = ConfigDict(
-        populate_by_name=True,
-        arbitrary_types_allowed=True,
-    )
-
-class UpdateStudentModel(BaseModel):
-    """
-    A set of optional updates to be made to a document in the database.
-    """
-
-    name: Optional[str] = None
-    email: Optional[str] = None
-    course: Optional[str] = None
-    gpa: Optional[float] = None
-    model_config = ConfigDict(
-        arbitrary_types_allowed=True,
-        json_encoders={ObjectId: str},
-    )
-
-
-class StudentCollection(BaseModel):
-    """
-    A container holding a list of `StudentModel` instances.
-
-    This exists because providing a top-level array in a JSON response can be a [vulnerability](https://haacked.com/archive/2009/06/25/json-hijacking.aspx/)
-    """
-
-    students: List[StudentModel]
-
-@app.get(
-    "/students/",
+@student_router.get(
+    "/all/",
     response_description="List all students",
     response_model=StudentCollection,
     response_model_by_alias=False,
@@ -79,8 +23,8 @@ def list_students():
     return StudentCollection(students= list(student_collection.find()))
 
 
-@app.get(
-    "/students/{id}",
+@student_router.get(
+    "/student/{id}",
     response_description="Get a single student",
     response_model=StudentModel,
     response_model_by_alias=False,
@@ -97,8 +41,8 @@ def show_student(id: str):
     raise HTTPException(status_code=404, detail=f"Student {id} not found")
 
 
-@app.post(
-    "/students/",
+@student_router.post(
+    "/create/",
     response_description="Add new student",
     response_model=StudentModel,
     status_code=status.HTTP_201_CREATED,
@@ -119,8 +63,8 @@ def create_student(student: StudentModel = Body(...)):
     return created_student
 
 
-@app.put(
-    "/students/{id}",
+@student_router.put(
+    "/update/{id}",
     response_description="Update a student",
     response_model=StudentModel,
     response_model_by_alias=False,
@@ -154,7 +98,7 @@ def update_student(id: str, student: UpdateStudentModel = Body(...)):
     raise HTTPException(status_code=404, detail=f"Student {id} not found")
 
 
-@app.delete("/students/{id}", response_description="Delete a student")
+@student_router.delete("/delete/{id}", response_description="Delete a student")
 def delete_student(id: str):
     """
     Remove a single student record from the database.
