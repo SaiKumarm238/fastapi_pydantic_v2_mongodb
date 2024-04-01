@@ -1,7 +1,7 @@
 # Python Fastapi Pydantic_v2 Mongodb
 
 ```bash
-## Create a new project using Python 3.12, specifically:
+# Create a new project using Python 3.12, specifically:
   $ pipenv --python 3.12
   
 # Install the requirements:
